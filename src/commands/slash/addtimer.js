@@ -1,7 +1,5 @@
 const { SlashCommandBuilder, ChannelType } = require("discord.js");
-const { CronJob } = require("cron");
-const { DateTime } = require("luxon");
-const RedisConstants = require("../../constants/redis-constants");
+const Timer = require("../../handlers/timerhandler");
 
 const timestampRegex = /\d?\d:\d\d/g;
 
@@ -72,65 +70,11 @@ module.exports = {
 
     await this.redis.setTimer(
       interaction.guild.id,
-      `${RedisConstants.TIMER}:${timerObj.channelId}`,
+      timerObj.channelId,
       timerObj
     );
 
-    const job = new CronJob(
-      "* */10 * * * *",
-      () => {},
-      null,
-      true,
-      "America/Los_Angeles"
-    );
-
-    const updateTimer = async () => {
-      const channel = await interaction.guild.channels.fetch(
-        timerObj.channelId
-      );
-
-      if (!channel) {
-        redis.hDel(
-          interaction.guild.id,
-          `${RedisConstants.TIMER}:${timerObj.channelId}`
-        );
-        job.stop();
-      } else {
-        const now = DateTime.now();
-
-        const nextTimestamp = timerObj.timestamps
-          .map((timestamp) => {
-            let date = DateTime.now();
-            const [hours, minutes] = timestamp.split(":");
-            date = date.set({
-              hour: parseInt(hours),
-              minute: parseInt(minutes),
-              second: 0,
-              millisecond: 0,
-            });
-
-            if (date < now) date = date.plus({ days: 1 });
-
-            return date;
-          })
-          .sort()[0];
-
-        const diff = nextTimestamp.diff(now, ["hours", "minutes"]);
-
-        const duration =
-          diff.hours > 0
-            ? `${diff.hours}h`
-            : `${Math.ceil(diff.minutes / 10) * 10}m`;
-
-        channel.setName(`${timerObj.channelName} (${duration})`);
-      }
-    };
-
-    job.addCallback(() => {
-      updateTimer();
-    });
-
-    updateTimer();
+    await Timer.startTimer(timerObj, interaction);
 
     await interaction.reply(`Successfully created **${name}**.`);
   },
