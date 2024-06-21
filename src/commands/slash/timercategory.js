@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, ChannelType } = require("discord.js");
+const redis = require("../../services/redis");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -13,8 +14,7 @@ module.exports = {
     ),
   async execute(interaction) {
     const channel = interaction.options.get("category").channel;
-    if (!this.redis) this.redis = await require("../../services/redis");
-    await this.redis.setTimerCategory(interaction.guild.id, channel.id);
+    await redis.setTimerCategory(interaction.guild.id, channel.id);
     await interaction.reply(
       `Successfully set the timer category to **${channel.name}**.`
     );

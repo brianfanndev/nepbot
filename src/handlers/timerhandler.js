@@ -1,9 +1,9 @@
 const { CronJob } = require("cron");
 const { DateTime } = require("luxon");
+const redis = require("../services/redis");
 
 module.exports = {
   startTimer: async (timer, interaction) => {
-    if (!this.redis) this.redis = await require("../services/redis");
     const job = new CronJob(
       "* */10 * * * *",
       () => {},

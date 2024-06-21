@@ -1,21 +1,28 @@
 const RedisConstants = require("../constants/redis-constants");
+const { createClient } = require("redis");
 
-const redisServiceFactory = async () => {
-  const { createClient } = require("redis");
-  client = await createClient({
+const redisServiceFactory = () => {
+  client = createClient({
     url: `redis://${process.env.REDIS_URL}:${process.env.REDIS_PORT}`,
-  })
-    .on("error", (err) => console.log("Redis Client Error", err))
-    .connect();
+  }).on("error", (err) => console.log("Redis Client Error", err));
+
+  getTimerKey = (channelId) => `${RedisConstants.TIMER}:${channelId}`;
+
+  connect = async () => {
+    if (!client.isOpen || !client.isReady) await client.connect();
+  };
 
   return {
     setTimerCategory: async (guildId, channelId) => {
+      await connect();
       await client.HSET(guildId, RedisConstants.TIMER_CHANNEL_ID, channelId);
     },
     getTimerCategory: async (guildId) => {
+      await connect();
       return await client.HGET(guildId, RedisConstants.TIMER_CHANNEL_ID);
     },
     getAllTimers: async (guildId) => {
+      await connect();
       let timers = [];
 
       for await (const { field, value } of client.hScanIterator(guildId)) {
@@ -27,23 +34,23 @@ const redisServiceFactory = async () => {
       return timers;
     },
     getTimer: async (guildId, channelId) => {
-      const timersJSON = await client.hGet(
-        guildId,
-        `${RedisConstants.TIMER}:${channelId}`
-      );
-      return JSON.parse(timersJSON)?.data ?? [];
+      await connect();
+      const timersJSON = await client.hGet(guildId, getTimerKey(channelId));
+      return JSON.parse(timersJSON);
     },
     setTimer: async (guildId, channelId, timerObj) => {
+      await connect();
       await client.hSet(
         guildId,
-        `${RedisConstants.TIMER}:${channelId}`,
+        getTimerKey(channelId),
         JSON.stringify(timerObj)
       );
     },
     deleteTimer: async (guildId, channelId) => {
-      await client.hDel(guildId, `${RedisConstants.TIMER}:${channelId}`);
+      await connect();
+      await client.hDel(guildId, getTimerKey(channelId));
     },
   };
 };
-const redisService = redisServiceFactory();
-module.exports = redisService;
+
+module.exports = redisServiceFactory();

@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const Timer = require("../../handlers/timerhandler");
+const redis = require("../../services/redis");
 
 const timestampRegex = /\d?\d:\d\d/g;
 
@@ -9,10 +10,8 @@ module.exports = {
     .setDescription("Resets all timers. Use this in case the timers stop."),
 
   async execute(interaction) {
-    if (!this.redis) this.redis = await require("../../services/redis");
-
     const guild = interaction.guild;
-    const timers = await this.redis.getAllTimers(guild.id);
+    const timers = await redis.getAllTimers(guild.id);
     const channels = await interaction.guild.channels.fetch();
     const channelIds = channels.map((channel) => channel.id);
 
@@ -25,7 +24,7 @@ module.exports = {
     });
 
     for await (const timer of inactiveTimers) {
-      await this.redis.deleteTimer(guild.id, timer.channelId);
+      await redis.deleteTimer(guild.id, timer.channelId);
     }
 
     for await (const timer of activeTimers) {

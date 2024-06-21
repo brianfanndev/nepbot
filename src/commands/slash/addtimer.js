@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, ChannelType } = require("discord.js");
 const Timer = require("../../handlers/timerhandler");
+const redis = require("../../services/redis");
 
 const timestampRegex = /\d?\d:\d\d/g;
 
@@ -50,11 +51,7 @@ module.exports = {
       }
     });
 
-    if (!this.redis) this.redis = await require("../../services/redis");
-
-    const parentCategory = await this.redis.getTimerCategory(
-      interaction.guild.id
-    );
+    const parentCategory = await redis.getTimerCategory(interaction.guild.id);
 
     const newChannel = await interaction.guild.channels.create({
       name: name,
@@ -68,11 +65,7 @@ module.exports = {
       timestamps: timestampStringArr,
     };
 
-    await this.redis.setTimer(
-      interaction.guild.id,
-      timerObj.channelId,
-      timerObj
-    );
+    await redis.setTimer(interaction.guild.id, timerObj.channelId, timerObj);
 
     await Timer.startTimer(timerObj, interaction);
 
